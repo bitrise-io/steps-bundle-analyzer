@@ -1,0 +1,128 @@
+title: Bundle Analyzer
+summary: Analyze iOS and Android application bundles and generate size reports
+description: |-
+  This step analyzes iOS (.ipa) and Android (.apk, .aab) application bundles to provide detailed size reports, identify potential optimizations, and detect duplicate files.
+
+  Features:
+  - Automatic artifact detection from Bitrise environment variables
+  - Multiple report formats (text, markdown, HTML, JSON)
+  - Duplicate file detection
+  - GitHub Pull Request integration with automated comments
+  - Size threshold enforcement
+  - Comprehensive size breakdown and optimization recommendations
+
+  The step wraps the bitrise-plugins-bundle-inspector and deploys all reports to BITRISE_DEPLOY_DIR for easy access.
+
+website: https://github.com/bitrise-io/steps-bundle-analyzer
+source_code_url: https://github.com/bitrise-io/steps-bundle-analyzer
+support_url: https://github.com/bitrise-io/steps-bundle-analyzer/issues
+
+type_tags:
+  - utility
+  - deploy
+  - artifact-info
+
+toolkit:
+  go:
+    package_name: github.com/bitrise-io/steps-bundle-analyzer
+
+inputs:
+  - artifact_path:
+    opts:
+      title: Artifact path
+      description: |-
+        Path to the iOS (.ipa) or Android (.apk, .aab) artifact to analyze.
+
+        If not provided, the step will auto-detect the artifact from Bitrise environment variables in this priority order:
+        1. BITRISE_IPA_PATH
+        2. BITRISE_AAB_PATH
+        3. BITRISE_APK_PATH
+      is_required: false
+
+  - output_formats: "markdown,html"
+    opts:
+      title: Output formats
+      description: |-
+        Comma-separated list of report formats to generate.
+
+        Available formats:
+        - text: Plain text report
+        - json: Machine-readable JSON
+        - markdown: Markdown report (suitable for PR comments)
+        - html: Interactive HTML report with charts
+      is_required: true
+
+  - post_github_comment: "auto"
+    opts:
+      title: Post GitHub PR comment
+      description: |-
+        Controls whether to post a summary comment to GitHub Pull Requests.
+
+        Options:
+        - auto: Post comment if running in PR context and token is available (non-fatal if fails)
+        - yes: Always post comment (fail if unable)
+        - no: Never post comment
+      is_required: true
+      value_options:
+        - "auto"
+        - "yes"
+        - "no"
+
+  - github_token: "$GIT_ACCESS_TOKEN"
+    opts:
+      title: GitHub access token
+      description: |-
+        GitHub personal access token for posting PR comments.
+
+        Defaults to $GIT_ACCESS_TOKEN environment variable.
+        Required permissions: repo scope (for private repos) or public_repo (for public repos).
+      is_required: false
+      is_sensitive: true
+
+  - fail_on_large_size:
+    opts:
+      title: Fail on large bundle size
+      description: |-
+        Maximum allowed bundle size in megabytes (MB).
+
+        If the analyzed bundle exceeds this threshold, the step will fail the build.
+        Leave empty to disable size checking.
+
+        Example: "50" will fail if bundle is larger than 50 MB
+      is_required: false
+
+outputs:
+  - BUNDLE_ANALYZER_REPORT_PATH:
+    opts:
+      title: Markdown report path
+      description: Path to the generated markdown report file
+
+  - BUNDLE_ANALYZER_HTML_PATH:
+    opts:
+      title: HTML report path
+      description: Path to the generated HTML report file
+
+  - BUNDLE_ANALYZER_JSON_PATH:
+    opts:
+      title: JSON report path
+      description: Path to the generated JSON report file
+
+  - BUNDLE_SIZE_BYTES:
+    opts:
+      title: Bundle size (bytes)
+      description: Total bundle size in bytes
+
+  - BUNDLE_SIZE_MB:
+    opts:
+      title: Bundle size (MB)
+      description: Total bundle size in megabytes (rounded to 2 decimal places)
+
+  - BUNDLE_POTENTIAL_SAVINGS_BYTES:
+    opts:
+      title: Potential savings (bytes)
+      description: Estimated potential size savings from removing duplicates and optimizations
+
+  - BUNDLE_GITHUB_COMMENT_POSTED:
+    opts:
+      title: GitHub comment posted
+      description: Whether a GitHub PR comment was successfully posted (true/false)

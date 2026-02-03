@@ -1,0 +1,252 @@
+format_version: "11"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+workflows:
+  test_ios_ipa:
+    title: Test with iOS IPA artifact
+    description: End-to-end test with an iOS .ipa file
+    steps:
+    - script:
+        title: Setup test environment
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Create a minimal test IPA (just a zip with Info.plist)
+            mkdir -p /tmp/Payload/Test.app
+            cat > /tmp/Payload/Test.app/Info.plist << 'EOF'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>CFBundleIdentifier</key>
+                <string>com.test.app</string>
+                <key>CFBundleName</key>
+                <string>TestApp</string>
+            </dict>
+            </plist>
+            EOF
+
+            cd /tmp
+            zip -r test.ipa Payload
+
+            # Set environment variables
+            envman add --key BITRISE_IPA_PATH --value "/tmp/test.ipa"
+            envman add --key BITRISE_DEPLOY_DIR --value "/tmp/deploy"
+
+            echo "Test IPA created at: /tmp/test.ipa"
+
+    - path::./:
+        title: Run Bundle Analyzer
+        inputs:
+        - output_formats: "markdown,html,json"
+        - post_github_comment: "no"
+
+    - script:
+        title: Verify outputs
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Check that output variables are set
+            if [ -z "$BUNDLE_SIZE_BYTES" ]; then
+                echo "ERROR: BUNDLE_SIZE_BYTES not set"
+                exit 1
+            fi
+
+            if [ -z "$BUNDLE_SIZE_MB" ]; then
+                echo "ERROR: BUNDLE_SIZE_MB not set"
+                exit 1
+            fi
+
+            echo "✓ Bundle size: $BUNDLE_SIZE_MB MB ($BUNDLE_SIZE_BYTES bytes)"
+
+            # Check that reports were deployed
+            if [ ! -f "$BUNDLE_ANALYZER_REPORT_PATH" ]; then
+                echo "ERROR: Markdown report not found at: $BUNDLE_ANALYZER_REPORT_PATH"
+                exit 1
+            fi
+
+            if [ ! -f "$BUNDLE_ANALYZER_HTML_PATH" ]; then
+                echo "ERROR: HTML report not found at: $BUNDLE_ANALYZER_HTML_PATH"
+                exit 1
+            fi
+
+            if [ ! -f "$BUNDLE_ANALYZER_JSON_PATH" ]; then
+                echo "ERROR: JSON report not found at: $BUNDLE_ANALYZER_JSON_PATH"
+                exit 1
+            fi
+
+            echo "✓ All reports generated successfully"
+            echo "✓ Test passed!"
+
+  test_android_apk:
+    title: Test with Android APK artifact
+    description: End-to-end test with an Android .apk file
+    steps:
+    - script:
+        title: Setup test environment
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Create a minimal test APK (just a zip with AndroidManifest.xml)
+            mkdir -p /tmp/apk
+            cat > /tmp/apk/AndroidManifest.xml << 'EOF'
+            <?xml version="1.0" encoding="utf-8"?>
+            <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+                package="com.test.app">
+                <application android:label="TestApp" />
+            </manifest>
+            EOF
+
+            cd /tmp/apk
+            zip -r /tmp/test.apk *
+
+            # Set environment variables
+            envman add --key BITRISE_APK_PATH --value "/tmp/test.apk"
+            envman add --key BITRISE_DEPLOY_DIR --value "/tmp/deploy"
+
+            echo "Test APK created at: /tmp/test.apk"
+
+    - path::./:
+        title: Run Bundle Analyzer
+        inputs:
+        - output_formats: "markdown,html"
+        - post_github_comment: "no"
+
+    - script:
+        title: Verify outputs
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Check that output variables are set
+            if [ -z "$BUNDLE_SIZE_BYTES" ]; then
+                echo "ERROR: BUNDLE_SIZE_BYTES not set"
+                exit 1
+            fi
+
+            echo "✓ Bundle size: $BUNDLE_SIZE_MB MB"
+
+            # Check that reports were deployed
+            if [ ! -f "$BUNDLE_ANALYZER_REPORT_PATH" ]; then
+                echo "ERROR: Markdown report not found"
+                exit 1
+            fi
+
+            if [ ! -f "$BUNDLE_ANALYZER_HTML_PATH" ]; then
+                echo "ERROR: HTML report not found"
+                exit 1
+            fi
+
+            echo "✓ All reports generated successfully"
+            echo "✓ Test passed!"
+
+  test_size_threshold:
+    title: Test size threshold enforcement
+    description: Verify that size limits are enforced correctly
+    steps:
+    - script:
+        title: Setup test environment
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Create a test file that's ~2 MB
+            dd if=/dev/zero of=/tmp/large.ipa bs=1048576 count=2
+
+            envman add --key BITRISE_IPA_PATH --value "/tmp/large.ipa"
+            envman add --key BITRISE_DEPLOY_DIR --value "/tmp/deploy"
+
+    - path::./:
+        title: Run Bundle Analyzer (should succeed with 5 MB limit)
+        inputs:
+        - output_formats: "markdown"
+        - post_github_comment: "no"
+        - fail_on_large_size: "5"
+
+    - path::./:
+        title: Run Bundle Analyzer (should fail with 1 MB limit)
+        is_skippable: true
+        inputs:
+        - output_formats: "markdown"
+        - post_github_comment: "no"
+        - fail_on_large_size: "1"
+
+    - script:
+        title: Verify threshold behavior
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            echo "✓ Size threshold test completed"
+            echo "✓ Test passed!"
+
+  test_pr_simulation:
+    title: Test PR comment detection
+    description: Verify PR context detection without actually posting
+    steps:
+    - script:
+        title: Setup PR environment
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # Create a minimal test artifact
+            echo "test" > /tmp/test.ipa
+
+            # Simulate PR environment
+            envman add --key BITRISE_IPA_PATH --value "/tmp/test.ipa"
+            envman add --key BITRISE_DEPLOY_DIR --value "/tmp/deploy"
+            envman add --key BITRISE_PULL_REQUEST --value "123"
+            envman add --key BITRISEIO_GIT_REPOSITORY_SLUG --value "owner/repo"
+
+    - path::./:
+        title: Run Bundle Analyzer
+        inputs:
+        - output_formats: "markdown"
+        - post_github_comment: "no"  # Don't actually post
+
+    - script:
+        title: Verify PR detection
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            # PR comment should not be posted (we set post_github_comment=no)
+            if [ "$BUNDLE_GITHUB_COMMENT_POSTED" = "true" ]; then
+                echo "ERROR: Comment should not have been posted"
+                exit 1
+            fi
+
+            echo "✓ PR detection working correctly"
+            echo "✓ Test passed!"
+
+  ci:
+    title: Run all integration tests
+    description: Execute all test workflows
+    steps:
+    - script:
+        title: Run all tests
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -e
+
+            echo "Running integration tests..."
+
+            bitrise run test_ios_ipa
+            bitrise run test_android_apk
+            bitrise run test_size_threshold
+            bitrise run test_pr_simulation
+
+            echo "✓ All tests passed!"

@@ -1,0 +1,5 @@
+.build/
+vendor/
+*.test
+*.out
+.DS_Store
