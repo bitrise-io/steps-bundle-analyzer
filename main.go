@@ -252,7 +252,9 @@ func runBundleInspector(artifactPath, formats string, logger log.Logger) error {
 		return fmt.Errorf("bundle-inspector failed: %w", err)
 	}
 
-	if out != "" {
+	// Only print output in debug mode to avoid duplicate logging
+	// (we'll log the located files separately)
+	if out != "" && os.Getenv("BITRISE_STEP_DEBUG") == "true" {
 		logger.Printf("%s", out)
 	}
 
