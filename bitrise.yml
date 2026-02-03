@@ -158,8 +158,29 @@ workflows:
             #!/bin/bash
             set -ex
 
-            # Create a test file that's ~2 MB
-            dd if=/dev/zero of=/tmp/large.ipa bs=1048576 count=2
+            # Clean up any existing files
+            rm -rf /tmp/LargePayload /tmp/large.ipa
+
+            # Create a valid IPA with a large file inside (~2 MB)
+            mkdir -p /tmp/LargePayload/Large.app
+            cat > /tmp/LargePayload/Large.app/Info.plist << 'EOF'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>CFBundleIdentifier</key>
+                <string>com.test.large</string>
+                <key>CFBundleName</key>
+                <string>LargeApp</string>
+            </dict>
+            </plist>
+            EOF
+
+            # Add a large file to make it bigger
+            dd if=/dev/zero of=/tmp/LargePayload/Large.app/LargeFile bs=1048576 count=2
+
+            cd /tmp
+            zip -r large.ipa LargePayload
 
             envman add --key BITRISE_IPA_PATH --value "/tmp/large.ipa"
             envman add --key BITRISE_DEPLOY_DIR --value "/tmp/deploy"
@@ -200,11 +221,27 @@ workflows:
             #!/bin/bash
             set -ex
 
-            # Create a minimal test artifact
-            echo "test" > /tmp/test.ipa
+            # Clean up and create a valid test IPA
+            rm -rf /tmp/PRPayload /tmp/pr-test.ipa
+            mkdir -p /tmp/PRPayload/Test.app
+            cat > /tmp/PRPayload/Test.app/Info.plist << 'EOF'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>CFBundleIdentifier</key>
+                <string>com.test.pr</string>
+                <key>CFBundleName</key>
+                <string>PRTest</string>
+            </dict>
+            </plist>
+            EOF
+
+            cd /tmp
+            zip -r pr-test.ipa PRPayload
 
             # Simulate PR environment
-            envman add --key BITRISE_IPA_PATH --value "/tmp/test.ipa"
+            envman add --key BITRISE_IPA_PATH --value "/tmp/pr-test.ipa"
             envman add --key BITRISE_DEPLOY_DIR --value "/tmp/deploy"
             envman add --key BITRISE_PULL_REQUEST --value "123"
             envman add --key BITRISEIO_GIT_REPOSITORY_SLUG --value "owner/repo"

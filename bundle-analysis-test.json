@@ -1,0 +1,76 @@
+{
+  "artifact_info": {
+    "path": "/tmp/test.ipa",
+    "type": "ipa",
+    "size": 16201,
+    "uncompressed_size": 313,
+    "analyzed_at": "2026-02-03T17:25:26.613738+01:00",
+    "app_name": "TestApp",
+    "bundle_id": "com.test.app"
+  },
+  "size_breakdown": {
+    "executable": 0,
+    "frameworks": 0,
+    "resources": 313,
+    "assets": 0,
+    "libraries": 0,
+    "other": 0,
+    "by_category": {
+      "Resources": 313
+    },
+    "by_extension": {
+      ".plist": 313
+    }
+  },
+  "file_tree": [
+    {
+      "path": "Info.plist",
+      "name": "Info.plist",
+      "size": 313,
+      "is_dir": false
+    }
+  ],
+  "optimizations": [
+    {
+      "category": "image-optimization",
+      "severity": "medium",
+      "title": "Convert AppIcon60x60@2x.png to HEIC",
+      "description": "PNG can be converted to HEIC format for better compression. Measured savings: 3.7 KB",
+      "impact": 3771,
+      "files": [
+        "Payload/Airbnb.app/AppIcon60x60@2x.png"
+      ],
+      "action": "Convert to HEIC format using Xcode Asset Catalog (Image Set with Preserve Vector Data disabled)"
+    },
+    {
+      "category": "image-optimization",
+      "severity": "medium",
+      "title": "Convert AppIcon76x76@2x~ipad.png to HEIC",
+      "description": "PNG can be converted to HEIC format for better compression. Measured savings: 5.3 KB",
+      "impact": 5466,
+      "files": [
+        "Payload/Airbnb.app/AppIcon76x76@2x~ipad.png"
+      ],
+      "action": "Convert to HEIC format using Xcode Asset Catalog (Image Set with Preserve Vector Data disabled)"
+    }
+  ],
+  "metadata": {
+    "app_bundle": "Test.app",
+    "app_name": "TestApp",
+    "asset_catalogs": [],
+    "binaries": {},
+    "bundle_id": "com.test.app",
+    "dependency_graph": {},
+    "frameworks": [],
+    "platform": "iOS"
+  },
+  "largest_files": [
+    {
+      "path": "Info.plist",
+      "name": "Info.plist",
+      "size": 313,
+      "is_dir": false
+    }
+  ],
+  "total_savings": 9237
+}
