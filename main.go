@@ -67,6 +67,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Ensure bundle-inspector plugin is installed
+	logger.Println()
+	if err := ensureBundleInspectorInstalled(logger); err != nil {
+		logger.Errorf("Failed to ensure bundle-inspector is installed: %s", err)
+		os.Exit(1)
+	}
+
 	// Run bundle-inspector
 	logger.Println()
 	logger.Infof("Running bundle-inspector analysis...")
@@ -186,6 +193,46 @@ func detectArtifact(cfg Config, logger log.Logger) (string, error) {
 	}
 
 	return "", fmt.Errorf("no artifact found: provide artifact_path input or ensure BITRISE_IPA_PATH, BITRISE_AAB_PATH, or BITRISE_APK_PATH is set")
+}
+
+// ensureBundleInspectorInstalled checks if bundle-inspector is installed and installs it if needed
+func ensureBundleInspectorInstalled(logger log.Logger) error {
+	cmdFactory := command.NewFactory(env.NewRepository())
+
+	// Check if plugin is installed
+	logger.Infof("Checking for bundle-inspector plugin...")
+	checkCmd := cmdFactory.Create("bitrise", []string{"plugin", "list"}, nil)
+	out, err := checkCmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to check installed plugins: %w", err)
+	}
+
+	// Check if bundle-inspector is in the list
+	if strings.Contains(out, "bundle-inspector") {
+		logger.Donef("bundle-inspector plugin is already installed")
+		return nil
+	}
+
+	// Plugin not installed, install it
+	logger.Warnf("bundle-inspector plugin not found, installing...")
+	installCmd := cmdFactory.Create("bitrise", []string{"plugin", "install", "https://github.com/bitrise-io/bitrise-plugins-bundle-inspector.git"}, nil)
+
+	logger.Printf("$ %s", installCmd.PrintableCommandArgs())
+
+	installOut, err := installCmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		if installOut != "" {
+			logger.Printf("%s", installOut)
+		}
+		return fmt.Errorf("failed to install bundle-inspector plugin: %w", err)
+	}
+
+	if installOut != "" {
+		logger.Printf("%s", installOut)
+	}
+
+	logger.Donef("bundle-inspector plugin installed successfully")
+	return nil
 }
 
 // runBundleInspector executes the bundle-inspector plugin

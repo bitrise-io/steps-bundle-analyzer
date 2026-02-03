@@ -13,6 +13,9 @@ workflows:
             #!/bin/bash
             set -ex
 
+            # Clean up any existing files
+            rm -rf /tmp/Payload /tmp/test.ipa
+
             # Create a minimal test IPA (just a zip with Info.plist)
             mkdir -p /tmp/Payload/Test.app
             cat > /tmp/Payload/Test.app/Info.plist << 'EOF'
@@ -92,6 +95,9 @@ workflows:
         - content: |-
             #!/bin/bash
             set -ex
+
+            # Clean up any existing files
+            rm -rf /tmp/apk /tmp/test.apk
 
             # Create a minimal test APK (just a zip with AndroidManifest.xml)
             mkdir -p /tmp/apk
