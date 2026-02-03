@@ -284,24 +284,19 @@ func findGeneratedReports(searchDir string, logger log.Logger) (ReportPaths, err
 	var paths ReportPaths
 
 	// Bundle-inspector generates files with pattern: bundle-analysis-*.{md,html,json}
-	patterns := map[string]*string{
-		"bundle-analysis-*.md":   &paths.Markdown,
-		"bundle-analysis-*.html": &paths.HTML,
-		"bundle-analysis-*.json": &paths.JSON,
+	if matches, _ := filepath.Glob(filepath.Join(searchDir, "bundle-analysis-*.md")); len(matches) > 0 {
+		paths.Markdown = matches[0]
+		logger.Printf("Found: %s", matches[0])
 	}
 
-	for pattern, pathPtr := range patterns {
-		fullPattern := filepath.Join(searchDir, pattern)
-		matches, err := filepath.Glob(fullPattern)
-		if err != nil {
-			logger.Warnf("Failed to glob pattern %s: %s", fullPattern, err)
-			continue
-		}
+	if matches, _ := filepath.Glob(filepath.Join(searchDir, "bundle-analysis-*.html")); len(matches) > 0 {
+		paths.HTML = matches[0]
+		logger.Printf("Found: %s", matches[0])
+	}
 
-		if len(matches) > 0 {
-			*pathPtr = matches[0]
-			logger.Printf("Found: %s", matches[0])
-		}
+	if matches, _ := filepath.Glob(filepath.Join(searchDir, "bundle-analysis-*.json")); len(matches) > 0 {
+		paths.JSON = matches[0]
+		logger.Printf("Found: %s", matches[0])
 	}
 
 	return paths, nil
@@ -344,37 +339,34 @@ func deployReportsFromFiles(generatedFiles ReportPaths, deployDir string, logger
 		return paths, fmt.Errorf("failed to create deploy directory: %w", err)
 	}
 
-	// Copy each found report file
-	filesToCopy := map[string]*string{
-		generatedFiles.Markdown: &paths.Markdown,
-		generatedFiles.HTML:     &paths.HTML,
-		generatedFiles.JSON:     &paths.JSON,
-	}
-
-	for srcPath, dstPathPtr := range filesToCopy {
+	// Helper function to copy a single file
+	copyFile := func(srcPath string) string {
 		if srcPath == "" {
-			continue
+			return ""
 		}
 
-		// Use the same filename in deploy directory
 		filename := filepath.Base(srcPath)
 		dstPath := filepath.Join(deployDir, filename)
 
-		// Copy file
 		data, err := os.ReadFile(srcPath)
 		if err != nil {
 			logger.Warnf("Failed to read %s: %s", srcPath, err)
-			continue
+			return ""
 		}
 
 		if err := os.WriteFile(dstPath, data, 0644); err != nil {
 			logger.Warnf("Failed to write %s: %s", dstPath, err)
-			continue
+			return ""
 		}
 
 		logger.Printf("Deployed: %s", dstPath)
-		*dstPathPtr = dstPath
+		return dstPath
 	}
+
+	// Copy each report file
+	paths.Markdown = copyFile(generatedFiles.Markdown)
+	paths.HTML = copyFile(generatedFiles.HTML)
+	paths.JSON = copyFile(generatedFiles.JSON)
 
 	return paths, nil
 }
@@ -386,15 +378,14 @@ func isPullRequest() bool {
 }
 
 // postGitHubComment posts the markdown report as a PR comment
+// Note: Caller should verify isPullRequest() before calling this function
 func postGitHubComment(markdownPath, token string, logger log.Logger) error {
 	if token == "" {
 		return fmt.Errorf("github_token is required for posting PR comments")
 	}
 
+	// Get PR number (caller already verified this is a PR build via isPullRequest())
 	prNumber := os.Getenv("BITRISE_PULL_REQUEST")
-	if prNumber == "" || prNumber == "false" {
-		return fmt.Errorf("not a pull request build")
-	}
 
 	// Check if markdown file exists
 	if _, err := os.Stat(markdownPath); os.IsNotExist(err) {
