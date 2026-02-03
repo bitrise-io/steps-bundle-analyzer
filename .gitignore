@@ -3,3 +3,8 @@ vendor/
 *.test
 *.out
 .DS_Store
+*.md
+*.html
+*.json
+!README.md
+!CLAUDE.md
