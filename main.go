@@ -248,6 +248,12 @@ func ensureBundleInspectorInstalled(logger log.Logger) error {
 func runBundleInspector(artifactPath, formats, workingDir string, logger log.Logger) error {
 	cmdFactory := command.NewFactory(env.NewRepository())
 
+	// Temporarily unset BITRISE_DEPLOY_DIR to prevent bundle-inspector from auto-exporting
+	// We'll handle the deployment ourselves to have full control over output location
+	originalDeployDir := os.Getenv("BITRISE_DEPLOY_DIR")
+	os.Setenv("BITRISE_DEPLOY_DIR", "")
+	defer os.Setenv("BITRISE_DEPLOY_DIR", originalDeployDir)
+
 	args := []string{":bundle-inspector", "analyze", artifactPath, "-o", formats}
 	cmd := cmdFactory.Create("bitrise", args, &command.Opts{
 		Dir: workingDir,
